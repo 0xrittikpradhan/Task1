@@ -1,14 +1,9 @@
 const hre = require('hardhat');
 const { ethers } = require("hardhat");
-const express = require('express');
 var Web3 = require('web3');
 require('dotenv').config();
 
 async function main() {
-
-    // const app = express();
-    // console.log(__dirname);
-    // console.log(__filename);
 
     // const NFTContract = await (await hre.ethers.getContractFactory("NFTContract"))
     //     .attach("0xd9145CCE52D386f254917e481eB44e9943F39138");  -- local
@@ -18,9 +13,9 @@ async function main() {
     const ALCHEMY_Provider = `${process.env.ALCHEMY_RINKEBY_URL}`;
     var web3 = new Web3(new Web3.providers.HttpProvider(ALCHEMY_Provider));
     var blockNumber = await (await web3.eth.getBlock("latest")).number;
-    console.log(blockNumber);
+    console.log(blockNumber, "is the current block no.");
 
-    // NFTContract.events.TransferSingle({
+    // NFTContract.interface.events.TransferSingle({
     //     fromBlock: blockNumber
     // }, (error, event) => {
     //     console.log(event);

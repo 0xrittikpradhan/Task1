@@ -1,8 +1,13 @@
 {
   "name": "hardhat-project",
+  "scripts": {
+    "start": "node scripts/app.js",
+    "dev": "nodemon scripts/app.js -e js"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.0",
-    "hardhat": "^2.11.2"
+    "hardhat": "^2.11.2",
+    "nodemon": "^2.0.20"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.7.3",
