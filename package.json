@@ -13,6 +13,8 @@
     "@openzeppelin/contracts": "^4.7.3",
     "dotenv": "^16.0.2",
     "express": "^4.18.1",
+    "mongodb": "^4.10.0",
+    "mongoose": "^6.6.2",
     "web3": "^1.8.0"
   }
 }
