@@ -1,13 +1,15 @@
 // const hre = require('hardhat');
 // const { ethers } = require("hardhat");
+// const mongoose = require("mongoose");
 
 const { MongoClient } = require("mongodb");
-const mongoose = require("mongoose");
+const express = require("express");
 const Web3 = require("web3");
 require("dotenv").config();
 
 const ALCHEMY_Provider = `${process.env.ALCHEMY_RINKEBY_URL}`;
 const web3 = new Web3(new Web3.providers.WebsocketProvider(ALCHEMY_Provider));
+const app = express();
 
 const contractAddress = "0x7C455c0610C0c2Beb857eC522983C0da7BB8A147";
 const contractAbi = require("../build/abi.json");
@@ -21,55 +23,97 @@ const uri =
   "mongodb+srv://0xrittikpradhan:s3ni79lQcElpJS4v@cluster0.fuglox2.mongodb.net/?retryWrites=true&w=majority";
 const client = new MongoClient(uri);
 
+//Listning Transfer Events which are being emitted on ERC1155 Token Transfer.
+
 // await mongoose.connect("mongodb+srv://0xrittikpradhan:s3ni79lQcElpJS4v@cluster0.fuglox2.mongodb.net/?retryWrites=true&w=majority");
 
-try {
-  //   console.log(client);
-  NFTContract.events
-    .TransferSingle(
-      // {
-      //   fromBlock: blockNumber,
-      // },
-      (error, event) => {
-        console.log("Event Listen: Success");
+NFTContract.events
+  .TransferSingle(
+    // {
+    //   fromBlock: blockNumber,
+    // },
+    (error, event) => {
+      try {
+        const eventDetails = {
+          Block_Number: event.blockNumber.toString(),
+          Event_Name: event.event.toString(),
+          Operator_Address: event.returnValues.operator.toString(),
+          From_Address: event.returnValues.from.toString(),
+          To_Address: event.returnValues.to.toString(),
+          Token_Id: event.returnValues.id.toString(),
+          Token_Amount: event.returnValues.value.toString(),
+        };
+        console.log(eventDetails);
+        client.connect();
+        createListing(client, eventDetails);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        client.close();
       }
-    )
-    .on("connected", (subscriptionId) => {
-      console.log({ subscriptionId });
-    })
-    .on("data", (event) => {
+    }
+  )
+  .on("connected", (subscriptionId) => {
+    console.log({ subscriptionId });
+  })
+  .on("data", (event) => {
+    console.log(event);
+  })
+  .on("changed", (event) => {
+    //remove event from local database
+  })
+  .on("error", (error, receipt) => {
+    // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt....
+  });
 
-      const eventDetails = {
-        "Block_Number" : event.blockNumber.toString(),
-        "Event_Name" : event.event.toString(),
-        "Operator_Address" : event.returnValues.operator.toString(),
-        "From_Address" : event.returnValues.from.toString(),
-        "To_Address" : event.returnValues.to.toString(),
-        "Token_Id" : event.returnValues.id.toString(),
-        "Token_Amount" : event.returnValues.value.toString()
-      };
-      console.log(eventDetails);
-        await client.connect();
-      
-        await createListing(client, eventDetails);
-    })
-    .on("changed", (event) => {
-      //remove event from local database
-    })
-    .on("error", (error, receipt) => {
-      // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt....
-    });
-} catch (e) {
-  console.error(e);
-} finally {
-    await client.close();
-}
+NFTContract.events
+  .TransferBatch(
+    // {
+    //   fromBlock: blockNumber,
+    // },
+    (error, event) => {
+      try {
+
+        //1. separate document forEach ids or a single document for 1 batchTransfer
+
+        // const eventDetails = {
+        //   Block_Number: event.blockNumber.toString(),
+        //   Event_Name: event.event.toString(),
+        //   Operator_Address: event.returnValues.operator.toString(),
+        //   From_Address: event.returnValues.from.toString(),
+        //   To_Address: event.returnValues.to.toString(),
+        //   Token_Id: event.returnValues.id.toString(),
+        //   Token_Amount: event.returnValues.value.toString(),
+        // };
+        // console.log(eventDetails);
+        // client.connect();
+        // createListing(client, eventDetails);
+        console.log(event);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        // client.close();
+      }
+    }
+  )
+  .on("connected", (subscriptionId) => {
+    console.log({ subscriptionId });
+  })
+  .on("data", (event) => {
+    // console.log(event);
+  })
+  .on("changed", (event) => {
+    //remove event from local database
+  })
+  .on("error", (error, receipt) => {
+    // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt....
+  });
 
 async function createListing(client, event) {
   const result = await client
     .db("Addresses")
     .collection("SingleTransferEvent")
-    .insert(event);
+    .insertOne(event);
   console.log(
     "New listing created with the following id: ${result.insertedId}"
   );
