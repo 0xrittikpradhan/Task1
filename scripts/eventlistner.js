@@ -11,8 +11,12 @@ const ALCHEMY_Provider = `${process.env.ALCHEMY_RINKEBY_URL}`;
 const web3 = new Web3(new Web3.providers.WebsocketProvider(ALCHEMY_Provider));
 const app = express();
 
-const contractAddress = "0x7C455c0610C0c2Beb857eC522983C0da7BB8A147";
-const contractAbi = require("../build/abi.json");
+// Old Token Contract 
+// const contractAddress = "0x7C455c0610C0c2Beb857eC522983C0da7BB8A147";
+// const contractAbi = require("../build/abi.json");
+
+const contractAddress = "0x71D93540154882ec5a28D8D61c3249A856C7B494";
+const contractAbi = require("../build/newTokenABI.json");
 
 const NFTContract = new web3.eth.Contract(contractAbi, contractAddress);
 // var blockNumber = web3.eth.getBlock("latest");
@@ -35,6 +39,7 @@ NFTContract.events
     (error, event) => {
       try {
         const eventDetails = {
+          Tx_Hash: event.transactionHash,
           Block_Number: event.blockNumber.toString(),
           Event_Name: event.event.toString(),
           Operator_Address: event.returnValues.operator.toString(),
@@ -43,13 +48,13 @@ NFTContract.events
           Token_Id: event.returnValues.id.toString(),
           Token_Amount: event.returnValues.value.toString(),
         };
-        console.log(eventDetails);
+        // console.log(eventDetails);
         client.connect();
         createListing(client, eventDetails);
       } catch (e) {
         console.error(e);
       } finally {
-        client.close();
+        // client.close();
       }
     }
   )
@@ -73,21 +78,23 @@ NFTContract.events
     // },
     (error, event) => {
       try {
-
-        //1. separate document forEach ids or a single document for 1 batchTransfer
-
-        // const eventDetails = {
-        //   Block_Number: event.blockNumber.toString(),
-        //   Event_Name: event.event.toString(),
-        //   Operator_Address: event.returnValues.operator.toString(),
-        //   From_Address: event.returnValues.from.toString(),
-        //   To_Address: event.returnValues.to.toString(),
-        //   Token_Id: event.returnValues.id.toString(),
-        //   Token_Amount: event.returnValues.value.toString(),
-        // };
-        // console.log(eventDetails);
-        // client.connect();
-        // createListing(client, eventDetails);
+        console.log(event.returnValues.ids);
+        event.returnValues.ids.array.forEach((element) => {
+          console.log("ElementId: " + element);
+          // const eventDetails = {
+          //   Tx_Hash: transactionHash.toString(),
+          //   Block_Number: event.blockNumber.toString(),
+          //   Event_Name: event.event.toString(),
+          //   Operator_Address: event.returnValues.operator.toString(),
+          //   From_Address: event.returnValues.from.toString(),
+          //   To_Address: event.returnValues.to.toString(),
+          //   Token_Id: event.returnValues.ids.toString(),
+          //   Token_Amount: event.returnValues.values.toString(),
+          // };
+          // console.log(eventDetails);
+          // client.connect();
+          // createListing(client, eventDetails);
+        });
         console.log(event);
       } catch (e) {
         console.error(e);
@@ -110,13 +117,19 @@ NFTContract.events
   });
 
 async function createListing(client, event) {
-  const result = await client
-    .db("Addresses")
-    .collection("SingleTransferEvent")
-    .insertOne(event);
-  console.log(
-    "New listing created with the following id: ${result.insertedId}"
-  );
+  if (await client.db("Addresses").collection("TransferEvent").findOne({ Tx_Hash: event.Tx_Hash }) === null) {
+    console.log("Inserting into DB Collection...");
+    const result = await client
+      .db("Addresses")
+      .collection("TransferEvent")
+      .insertOne(event);
+    console.log(
+      `New listing created with the following id: ${result.insertedId}`
+    );
+  }
+  else {
+    console.log("Hash Already Exists");
+  }
 }
 
 // main().catch(console.error);
