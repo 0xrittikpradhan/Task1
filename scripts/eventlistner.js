@@ -79,9 +79,9 @@ NFTContract.events
     (error, event) => {
       try {
         client.connect();
-        event.returnValues.ids.forEach((id) => {
-          const index = event.returnValues.ids.indexOf(id);
-          const value = event.returnValues.values[index];
+        for(let i=0; i< event.returnValues.ids.length; i++) {
+          const id = event.returnValues.ids[i];
+          const value = event.returnValues.values[i];
           const eventDetails = {
             Tx_Hash: event.transactionHash,
             Block_Number: event.blockNumber.toString(),
@@ -93,7 +93,7 @@ NFTContract.events
             Token_Amount: value.toString(),
           };
           createListing(client, eventDetails);
-        });
+        };
 
       } catch (e) {
         console.error(e);
@@ -116,18 +116,35 @@ NFTContract.events
   });
 
 async function createListing(client, eventDetails) {
-  const checkTXHash = await client.db("Addresses")
+  const checkDuplicateTxHash = await client.db("Addresses")
   .collection("TransferEvent")
     .findOne({ Tx_Hash: eventDetails.Tx_Hash, Token_Id: eventDetails.Token_Id });
-  if (checkTXHash === null) {
+  // console.log(checkDuplicateTxHash);
+  const checkSameTokeninBatch = await client.db("Addresses")
+    .collection("TransferEvent")
+      .findOne({ Tx_Hash: eventDetails.Tx_Hash, Token_Id: eventDetails.Token_Id, Block_Number: eventDetails.Block_Number });
+  // console.log(checkSameTokeninBatch);
+  if (checkDuplicateTxHash === null) {
     console.log("Inserting into DB Collection...");
     const result = await client
       .db("Addresses")
       .collection("TransferEvent")
       .insertOne(eventDetails);
     console.log(
-      `New listing created with the following id: ${result.insertedId}`
+      `New listing created with the following Id: ${result.insertedId}`
     );
+  }
+  else if(checkDuplicateTxHash !== null && checkSameTokeninBatch !== null & eventDetails.Event_Name === "TransferBatch") {
+    console.log("Updating existing record...");
+    const tokenSum = (parseInt(checkSameTokeninBatch.Token_Amount) + parseInt(eventDetails.Token_Amount)).toString();
+    const objectId = checkSameTokeninBatch._id;
+    const result = await client
+      .db("Addresses")
+        .collection("TransferEvent")
+          .updateOne({ _id : objectId}, { $set: {Token_Amount : (tokenSum)}}, {upsert: true});
+          console.log(
+            "Record Updated, Id: " + objectId
+          );
   }
   else {
     console.log("Hash Already Exists");
