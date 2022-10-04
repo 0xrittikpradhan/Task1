@@ -62,7 +62,7 @@ NFTContract.events
     console.log({ subscriptionId });
   })
   .on("data", (event) => {
-    console.log(event);
+    // console.log(event);
   })
   .on("changed", (event) => {
     //remove event from local database
@@ -78,24 +78,23 @@ NFTContract.events
     // },
     (error, event) => {
       try {
-        console.log(event.returnValues.ids);
-        event.returnValues.ids.array.forEach((element) => {
-          console.log("ElementId: " + element);
-          // const eventDetails = {
-          //   Tx_Hash: transactionHash.toString(),
-          //   Block_Number: event.blockNumber.toString(),
-          //   Event_Name: event.event.toString(),
-          //   Operator_Address: event.returnValues.operator.toString(),
-          //   From_Address: event.returnValues.from.toString(),
-          //   To_Address: event.returnValues.to.toString(),
-          //   Token_Id: event.returnValues.ids.toString(),
-          //   Token_Amount: event.returnValues.values.toString(),
-          // };
-          // console.log(eventDetails);
-          // client.connect();
-          // createListing(client, eventDetails);
+        client.connect();
+        event.returnValues.ids.forEach((id) => {
+          const index = event.returnValues.ids.indexOf(id);
+          const value = event.returnValues.values[index];
+          const eventDetails = {
+            Tx_Hash: event.transactionHash,
+            Block_Number: event.blockNumber.toString(),
+            Event_Name: event.event.toString(),
+            Operator_Address: event.returnValues.operator.toString(),
+            From_Address: event.returnValues.from.toString(),
+            To_Address: event.returnValues.to.toString(),
+            Token_Id: id.toString(),
+            Token_Amount: value.toString(),
+          };
+          createListing(client, eventDetails);
         });
-        console.log(event);
+
       } catch (e) {
         console.error(e);
       } finally {
@@ -116,13 +115,16 @@ NFTContract.events
     // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt....
   });
 
-async function createListing(client, event) {
-  if (await client.db("Addresses").collection("TransferEvent").findOne({ Tx_Hash: event.Tx_Hash }) === null) {
+async function createListing(client, eventDetails) {
+  const checkTXHash = await client.db("Addresses")
+  .collection("TransferEvent")
+    .findOne({ Tx_Hash: eventDetails.Tx_Hash, Token_Id: eventDetails.Token_Id });
+  if (checkTXHash === null) {
     console.log("Inserting into DB Collection...");
     const result = await client
       .db("Addresses")
       .collection("TransferEvent")
-      .insertOne(event);
+      .insertOne(eventDetails);
     console.log(
       `New listing created with the following id: ${result.insertedId}`
     );
